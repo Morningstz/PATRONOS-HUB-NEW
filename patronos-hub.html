@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patronos Hub — The AI Builders' Marketplace</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%230d0d0d'/%3E%3Crect x='12' y='9' width='3.5' height='22' rx='0.5' fill='%23f5f0e6'/%3E%3Cpath d='M15.5 9 H22.5 A 7 7 0 0 1 22.5 23 H15.5 Z' fill='%23f5f0e6'/%3E%3Ccircle cx='20' cy='16' r='2.4' fill='%2300b86b'/%3E%3C/svg%3E">
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body, #root { background: #f5f0e6; min-height: 100vh; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; color: #0d0d0d; -webkit-font-smoothing: antialiased; }
+  .font-serif { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.01em; }
+  .font-mono  { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum'; }
+  .scroll-hide::-webkit-scrollbar { display: none; }
+  .scroll-hide { scrollbar-width: none; }
+  @keyframes float-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .float-up { animation: float-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes pulse-soft { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+  .pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+  @keyframes pop-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+  .pop-in { animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .paper-grain { background-color: #f5f0e6; background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.025) 1px, transparent 0); background-size: 18px 18px; }
+  input, textarea, select, button { font-family: inherit; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid #0d0d0d; outline-offset: 1px; }
+  button { cursor: pointer; }
+  .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -20px rgba(0,0,0,0.18); }
+  .underline-hover { position: relative; }
+  .underline-hover::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 1.5px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease; }
+  .underline-hover:hover::after { transform: scaleX(1); }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+/* ===== CONSTANTS ===== */
+const FEE_RATE = 0.15;
+const C = { cream:"#f5f0e6", paper:"#fbf7ef", ink:"#0d0d0d", inkSoft:"#2a2a2a", muted:"#6b6660", mutedLt:"#a39e96", border:"#e7e0d2", emerald:"#00b86b", emeraldDk:"#009957", coral:"#ff5a3c", amber:"#f5a623", navy:"#1e3a5f", violet:"#5b3fff", rose:"#e91e63" };
+
+const CATEGORIES = [
+  { id:"agents",    name:"AI Agents",    iconKey:"bot",      gradient:["#00b86b","#005c36"] },
+  { id:"workflows", name:"Workflows",    iconKey:"workflow", gradient:["#1e3a5f","#0a1f3d"] },
+  { id:"prompts",   name:"Prompt Packs", iconKey:"sparkles", gradient:["#f5a623","#c87d00"] },
+  { id:"code",      name:"Code & APIs",  iconKey:"code",     gradient:["#5b3fff","#2d1f99"] },
+  { id:"datasets",  name:"Datasets",     iconKey:"brain",    gradient:["#e91e63","#8a0e3a"] },
+  { id:"templates", name:"Templates",    iconKey:"file",     gradient:["#ff5a3c","#b32d18"] },
+];
+
+const PLANS = [
+  { id:"free",    name:"Builder",     price:0,    seats:"1 listing",   features:["List 1 product","Standard 15% fee","Community support"] },
+  { id:"pro",     name:"Creator Pro", price:29,   seats:"Unlimited",   features:["Unlimited listings","10% platform fee","Analytics dashboard","Priority placement"] },
+  { id:"startup", name:"Studio",      price:99,   seats:"Team of 5",   features:["Everything in Pro","Verified creator badge","Custom storefront","API access"] },
+  { id:"ent",     name:"Enterprise",  price:1999, seats:"White-label", features:["Custom marketplace","0% transaction fee","Dedicated support","SLA guaranteed"] },
+];
+
+const COUPONS = {
+  WELCOME20:  { discount:0.20, label:"20% off — first-time buyer",  active:true  },
+  LAUNCH50:   { discount:0.50, label:"50% off — launch promo",      active:true  },
+  STARTUP10:  { discount:0.10, label:"10% off — startup founder",   active:true  },
+  BLACKFRIDAY:{ discount:0.30, label:"30% off — Black Friday",      active:false },
+};
+
+/* ===== 25 LISTINGS (12 original + 13 new) ===== */
+const SEED_LISTINGS = [
+  { title:"Cold Outreach Sales Agent",   category:"agents",    price:89,  desc:"Autonomous SDR that researches leads, writes hyper-personalized emails, and books meetings on autopilot. GPT-4 + Claude powered.", seller:"neuralforge", rating:4.9, sales:312,  featured:true,  verified:true,  trending:true  },
+  { title:"Trading Signal Brain (LSTM)", category:"agents",    price:249, desc:"Production-grade LSTM trained on 5 years of crypto data. Predicts BTC/ETH 4h trends with 64% backtested accuracy.",                seller:"quantlabs",   rating:4.7, sales:88,   featured:true,  verified:true,  trending:true  },
+  { title:"100 Killer Marketing Prompts",category:"prompts",   price:19,  desc:"Battle-tested prompt library used by 12 SaaS companies. Copy that converts — for ads, landing pages, cold emails, sales pages.",   seller:"promptcraft", rating:4.8, sales:1840, featured:false, verified:false, trending:true  },
+  { title:"n8n SaaS Onboarding Flow",    category:"workflows", price:49,  desc:"Drop-in n8n flow: Stripe → Supabase → welcome email → Slack alert. Setup in 10 minutes. Includes 4 fallback paths.",               seller:"automateco",  rating:4.9, sales:421,  featured:false, verified:true,  trending:false },
+  { title:"Customer Support GPT",        category:"agents",    price:59,  desc:"Train it on your help docs in 5 min. Resolves 70% of tickets without human handoff. Multi-language. Slack and Intercom included.", seller:"supportai",   rating:4.6, sales:256,  featured:false, verified:true,  trending:false },
+  { title:"Shopify Description Gen",     category:"workflows", price:29,  desc:"Bulk-generate SEO-optimized product descriptions for 10,000+ items. One-click Shopify install. Avg 23% lift on PDP conversion.",   seller:"shopgenius",  rating:4.5, sales:612,  featured:false, verified:false, trending:false },
+  { title:"Indonesian NLP Dataset (50k)",category:"datasets",  price:199, desc:"Cleaned, labeled Indonesian sentiment data — 50,000 rows. Perfect for fine-tuning LLMs for SEA market. Gold-standard validation.",  seller:"javadata",    rating:5.0, sales:34,   featured:true,  verified:true,  trending:false },
+  { title:"Voice Cloning API",           category:"code",      price:149, desc:"Clone any voice from 30s of audio. REST API + Python SDK. 1,000 free generations/month. Sub-200ms latency. ElevenLabs alternative.",seller:"voiceforge",  rating:4.4, sales:178,  featured:false, verified:true,  trending:true  },
+  { title:"Notion AI SOP Templates",     category:"templates", price:39,  desc:"47 pre-built standard operating procedures for AI-first companies. Hiring, ops, growth, support. Instant Notion duplicate.",      seller:"scaleops",    rating:4.7, sales:893,  featured:false, verified:false, trending:false },
+  { title:"Research Paper Summarizer",   category:"agents",    price:39,  desc:"Drop in arxiv links → get structured summaries with key findings, methods, citations. PDF and Notion export. Built for ML researchers.", seller:"academicai", rating:4.8, sales:167,  featured:false, verified:false, trending:false },
+  { title:"Lead Scraper + Enricher",     category:"agents",    price:79,  desc:"Find verified emails, LinkedIn profiles, company data. 10k leads/day. GDPR compliant. Built-in deliverability checker.",            seller:"growthstack", rating:4.6, sales:445,  featured:false, verified:true,  trending:false },
+  { title:"Stable Diffusion Style Pack", category:"datasets",  price:24,  desc:"200 curated LoRAs for product photography, brand assets, and editorial illustration. Comfy + Auto1111 compatible.",               seller:"pixelmind",   rating:4.9, sales:1102, featured:true,  verified:false, trending:true  },
+  /* 13 NEW LISTINGS */
+  { title:"AI Resume Reviewer Agent",    category:"agents",    price:29,  desc:"Upload a resume — get AI feedback on impact bullets, ATS keywords, and weakness areas in 30 seconds. Used by 200+ career coaches.", seller:"careerlift",  rating:4.7, sales:534,  featured:false, verified:false, trending:true  },
+  { title:"SEO Content Generator",       category:"workflows", price:45,  desc:"Generate 50+ ranking blog posts in a day. Built-in keyword research, internal linking, and SERP analysis. WordPress plugin included.",seller:"rankforge",   rating:4.6, sales:289,  featured:false, verified:true,  trending:true  },
+  { title:"Crypto Tax Calculator API",   category:"code",      price:79,  desc:"Calculate capital gains across 50+ exchanges. CSV imports, IRS form 8949 export. Used by 3,400 crypto investors at tax time.",     seller:"taxchain",    rating:4.5, sales:142,  featured:false, verified:true,  trending:false },
+  { title:"ChatGPT Mastery Course Bundle",category:"templates",price:59,  desc:"12-hour video course + 200 prompts + Notion workspace. Go from beginner to advanced AI user in 7 days. 5,000+ students enrolled.",  seller:"learnai",     rating:4.9, sales:1456, featured:true,  verified:true,  trending:true  },
+  { title:"Discord Community Bot",       category:"agents",    price:69,  desc:"Auto-moderate, welcome new members, run polls, post daily content. Used by 800+ Discord servers. Web dashboard included.",         seller:"discordlab",  rating:4.7, sales:367,  featured:false, verified:true,  trending:false },
+  { title:"Logo Design AI Workflow",     category:"workflows", price:35,  desc:"Generate 50 logo concepts in any style. SVG export, brand color extraction, Figma integration. Used by 2,100+ designers.",          seller:"brandcraft",  rating:4.6, sales:725,  featured:false, verified:false, trending:true  },
+  { title:"Email Subject Line Optimizer",category:"prompts",   price:14,  desc:"500 proven subject line templates that A/B tested at 4%+ open rate. Includes psychology guide and segmentation strategy.",         seller:"inboxhack",   rating:4.8, sales:2103, featured:false, verified:false, trending:true  },
+  { title:"Twitter Growth Agent",        category:"agents",    price:99,  desc:"Daily content ideas, optimal posting times, engagement hooks. Grew 12 accounts past 50k followers. AI-driven, human-approved.",     seller:"tweetscale",  rating:4.5, sales:198,  featured:false, verified:true,  trending:false },
+  { title:"Real Estate Listing Generator",category:"templates",price:39,  desc:"Generate compelling property descriptions, social media posts, and email blasts in seconds. MLS integration. Used by 600+ agents.", seller:"propertyai",  rating:4.6, sales:312,  featured:false, verified:false, trending:false },
+  { title:"Code Review Assistant",       category:"agents",    price:89,  desc:"AI reviews PRs for bugs, security issues, and code smell. GitHub Action included. Catches 40% more issues than ESLint alone.",      seller:"reviewbot",   rating:4.7, sales:223,  featured:false, verified:true,  trending:true  },
+  { title:"Podcast Show Notes AI",       category:"workflows", price:25,  desc:"Auto-generate timestamps, summaries, transcripts, and SEO-optimized show notes. Saves 4 hours per episode.",                       seller:"podpilot",    rating:4.8, sales:481,  featured:false, verified:false, trending:false },
+  { title:"Tailwind UI Component Library",category:"code",     price:49,  desc:"127 production-ready Tailwind components. Dark mode, accessibility, mobile-first. React + Vue + Svelte versions included.",         seller:"uikit",       rating:4.9, sales:1287, featured:true,  verified:true,  trending:true  },
+  { title:"Stock Sentiment Bot",         category:"agents",    price:189, desc:"Scrapes Reddit, Twitter, news. Predicts daily stock moves with 58% directional accuracy. Webhook + dashboard. Backtested 3 years.", seller:"sentilab",    rating:4.4, sales:67,   featured:false, verified:true,  trending:false },
+  { title:"Bahasa Indonesia Translator", category:"code",      price:59,  desc:"Production translation API for Bahasa ↔ English. 10x cheaper than Google Translate. Specialized in business and legal contexts.",  seller:"javadata",    rating:4.7, sales:89,   featured:false, verified:true,  trending:false },
+];
+
+const SEED_REVIEWS = [
+  { listingId:"seed_0",  reviewer:"samira",   rating:5, comment:"Saved me 3 weeks of dev time. Booked 8 demos in week one.",                          daysAgo:4  },
+  { listingId:"seed_0",  reviewer:"marco_b",  rating:5, comment:"Setup took 12 minutes. The email frameworks alone are worth $89.",                   daysAgo:11 },
+  { listingId:"seed_2",  reviewer:"ahmed_k",  rating:5, comment:"Already used 30 of these for our launch. Conversion went up 40%.",                   daysAgo:6  },
+  { listingId:"seed_15", reviewer:"chen_z",   rating:5, comment:"Best AI course on the internet right now. The Notion templates are pure gold.",      daysAgo:8  },
+  { listingId:"seed_18", reviewer:"julia_p",  rating:5, comment:"Open rates jumped from 18% to 31% in two weeks. No-brainer purchase.",               daysAgo:14 },
+  { listingId:"seed_23", reviewer:"devin_n",  rating:5, comment:"Quality of components is on par with Vercel/Linear. Saved months of UI work.",       daysAgo:21 },
+];
+
+/* ===== STORAGE (localStorage) ===== */
+const sg = (k,d=null) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const ss = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+const sd = (k) => { try { localStorage.removeItem(k); } catch {} };
+const timeAgo = (ts) => { const s = Math.floor((Date.now()-ts)/1000); if (s<60) return "just now"; if (s<3600) return Math.floor(s/60)+"m ago"; if (s<86400) return Math.floor(s/3600)+"h ago"; if (s<604800) return Math.floor(s/86400)+"d ago"; return Math.floor(s/604800)+"w ago"; };
+
+/* ===== ICON COMPONENT (inline SVGs for portability) ===== */
+const ICON_PATHS = {
+  search:    <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+  plus:      <><path d="M5 12h14"/><path d="M12 5v14"/></>,
+  x:         <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+  check:     <><path d="M20 6 9 17l-5-5"/></>,
+  arrowRight:<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>,
+  chevronLeft: <><path d="m15 18-6-6 6-6"/></>,
+  chevronDown: <><path d="m6 9 6 6 6-6"/></>,
+  star:      <><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></>,
+  flame:     <><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></>,
+  sparkles:  <><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></>,
+  badgeCheck:<><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></>,
+  lock:      <><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
+  shoppingBag:<><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></>,
+  store:     <><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2 2 0 0 1-2-2V7"/><path d="M18 12v0a2 2 0 0 1-2-2V7"/><path d="M14 12v0a2 2 0 0 1-2-2V7"/><path d="M10 12v0a2 2 0 0 1-2-2V7"/><path d="M6 12v0a2 2 0 0 1-2-2V7"/></>,
+  wallet:    <><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4H17a2 2 0 0 1 0-4h4V7Z"/></>,
+  globe:     <><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></>,
+  layoutDashboard:<><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
+  logOut:    <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>,
+  crown:     <><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></>,
+  bell:      <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>,
+  download:  <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
+  heart:     <><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></>,
+  share:     <><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></>,
+  bookmark:  <><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></>,
+  rocket:    <><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></>,
+  percent:   <><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></>,
+  send:      <><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
+  edit:      <><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></>,
+  msgCircle: <><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></>,
+  twitter:   <><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></>,
+  github:    <><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></>,
+  mail:      <><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>,
+  bot:       <><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></>,
+  workflow:  <><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></>,
+  code:      <><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></>,
+  brain:     <><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></>,
+  file:      <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></>,
+  layers:    <><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></>,
+  dollar:    <><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>,
+  trending:  <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>,
+  award:     <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></>,
+  zap:       <><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></>,
+  user:      <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+  eye:       <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
+  inbox:     <><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></>,
+  copy:      <><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>,
+  users:     <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+  bars:      <><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></>,
+  trash:     <><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
+  clock:     <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+};
+
+const I = ({ name, size=16, className="", style={}, ...p }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} {...p}>
+    {ICON_PATHS[name]}
+  </svg>
+);
+
+/* ===== LOGO ===== */
+const LogoMark = ({ size=32 }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+    <circle cx="20" cy="20" r="20" fill={C.ink}/>
+    <rect x="12" y="9" width="3.5" height="22" rx="0.5" fill={C.cream}/>
+    <path d="M15.5 9 H22.5 A 7 7 0 0 1 22.5 23 H15.5 Z" fill={C.cream}/>
+    <circle cx="20" cy="16" r="2.4" fill={C.emerald}/>
+  </svg>
+);
+const Logo = ({ size="md" }) => {
+  const dim = size==="lg" ? 36 : size==="sm" ? 22 : 28;
+  return (
+    <div className="flex items-center gap-2.5">
+      <LogoMark size={dim}/>
+      <div className="leading-none">
+        <div className={`font-serif font-semibold ${size==="lg"?"text-2xl":"text-lg"}`} style={{color:C.ink, letterSpacing:"-0.02em"}}>
+          Patronos<span style={{color:C.emerald}}>.</span>
+        </div>
+        <div className="font-mono text-[10px] tracking-[0.25em] uppercase mt-0.5" style={{color:C.muted}}>HUB</div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== PRIMITIVES ===== */
+const Btn = ({ children, variant="primary", size="md", className="", ...p }) => {
+  const sizes = { sm:"px-3.5 py-2 text-xs", md:"px-5 py-2.5 text-sm", lg:"px-7 py-3.5 text-sm" };
+  const s = {
+    primary:{backgroundColor:C.ink, color:"#fff"},
+    ghost:{borderColor:C.ink, color:C.ink, border:"1px solid", background:"transparent"},
+    light:{backgroundColor:"#fff", color:C.ink, border:`1px solid ${C.border}`},
+    emerald:{backgroundColor:C.emerald, color:"#fff"},
+  };
+  return <button className={`inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all hover:opacity-90 active:scale-95 ${sizes[size]} ${className}`} style={s[variant]} {...p}>{children}</button>;
+};
+
+const Pill = ({ children, color="ink", className="" }) => {
+  const cs = { ink:{bg:C.ink,fg:C.cream}, emerald:{bg:C.emerald,fg:"#fff"}, coral:{bg:C.coral,fg:"#fff"}, amber:{bg:C.amber,fg:"#fff"}, light:{bg:"#fff",fg:C.ink,bd:C.border}, cream:{bg:C.cream,fg:C.ink,bd:C.border} };
+  const x = cs[color];
+  return <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${className}`} style={{backgroundColor:x.bg,color:x.fg,border:x.bd?`1px solid ${x.bd}`:"none"}}>{children}</span>;
+};
+
+const Avatar = ({ name, size=32 }) => {
+  const initial = (name||"?")[0].toUpperCase();
+  const palette = [C.emerald, C.coral, C.amber, C.violet, C.navy, C.rose];
+  const idx = (name||"?").charCodeAt(0) % palette.length;
+  return <div className="rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0" style={{width:size,height:size,backgroundColor:palette[idx],fontSize:size*0.4}}>{initial}</div>;
+};
+
+const StarRating = ({ value=0, max=5, size=14, onChange, interactive=false }) => (
+  <div className="inline-flex items-center gap-0.5">
+    {Array.from({length:max}).map((_,i) => {
+      const filled = i < Math.round(value);
+      const el = <I name="star" size={size} style={{color:filled?C.amber:C.mutedLt, fill:filled?C.amber:"transparent"}}/>;
+      return interactive ? <button key={i} type="button" onClick={()=>onChange?.(i+1)} className="hover:scale-110 transition-transform">{el}</button> : <span key={i}>{el}</span>;
+    })}
+  </div>
+);
+
+const ProjectCover = ({ category, height=200 }) => {
+  const cat = CATEGORIES.find(c=>c.id===category) || CATEGORIES[0];
+  return (
+    <div className="relative w-full overflow-hidden flex items-center justify-center" style={{height,background:`linear-gradient(135deg, ${cat.gradient[0]}, ${cat.gradient[1]})`}}>
+      <div className="absolute inset-0 opacity-25" style={{backgroundImage:`radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 50%)`}}/>
+      <div className="absolute inset-0" style={{backgroundImage:`linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)`,backgroundSize:"32px 32px"}}/>
+      <I name={cat.iconKey} size={height*0.32} className="text-white relative z-10" style={{strokeWidth:1.2}}/>
+      <div className="absolute bottom-0 left-0 right-0 p-4 pt-12 z-20" style={{background:"linear-gradient(transparent, rgba(0,0,0,0.4))"}}>
+        <div className="font-mono text-[10px] tracking-widest text-white text-opacity-80 uppercase">{cat.name}</div>
+      </div>
+    </div>
+  );
+};
+
+const Toast = ({ message, onClose }) => {
+  useEffect(()=>{ const t = setTimeout(onClose, 3500); return ()=>clearTimeout(t); }, [onClose]);
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] float-up">
+      <div className="flex items-center gap-3 px-5 py-3.5 rounded-full" style={{backgroundColor:C.ink, color:"#fff", boxShadow:"0 12px 30px -10px rgba(0,0,0,0.3)"}}>
+        <I name="check" size={16} style={{color:C.emerald}}/>
+        <span className="text-sm">{message}</span>
+      </div>
+    </div>
+  );
+};
+
+/* ===== AUTH ===== */
+const AuthModal = ({ onClose, onAuth }) => {
+  const [email,setEmail] = useState("");
+  const [name,setName] = useState("");
+  const [mode,setMode] = useState("signup");
+  const submit = () => {
+    if (!email.trim()) return;
+    const key = `phub_user_${email.toLowerCase().trim()}`;
+    let user = sg(key);
+    if (mode === "signup") {
+      if (user) { alert("Account exists. Try sign in."); return; }
+      user = { email:email.toLowerCase().trim(), name:name.trim()||email.split("@")[0], plan:"free", balance:0, verified:false, joinedAt:Date.now(), purchases:[], listings:[], notifications:[{id:`n_${Date.now()}`,type:"system",title:"Welcome to Patronos Hub!",message:"Start by exploring trending projects or list your first product.",ts:Date.now(),read:false}] };
+      ss(key, user);
+    } else {
+      if (!user) { alert("No account. Try signing up."); return; }
+    }
+    ss("phub_session", { email:user.email });
+    onAuth(user);
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{backgroundColor:"rgba(13,13,13,0.6)"}}>
+      <div className="relative w-full max-w-md float-up">
+        <div className="rounded-2xl p-8" style={{backgroundColor:C.paper,border:`1px solid ${C.border}`}}>
+          <div className="flex items-center justify-between mb-7">
+            <Logo size="md"/>
+            <button onClick={onClose} style={{color:C.muted}}><I name="x" size={18}/></button>
+          </div>
+          <h2 className="font-serif text-3xl mb-1.5 leading-tight">{mode==="signup"?<>Welcome to <em>the Hub.</em></>:"Welcome back."}</h2>
+          <p className="text-sm mb-6" style={{color:C.muted}}>{mode==="signup"?"Start selling AI products in minutes.":"Sign in to continue."}</p>
+          {mode==="signup" && <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" className="w-full px-4 py-3 mb-3 rounded-lg text-sm bg-white" style={{border:`1px solid ${C.border}`}}/>}
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@domain.com" type="email" className="w-full px-4 py-3 mb-5 rounded-lg text-sm font-mono bg-white" style={{border:`1px solid ${C.border}`}}/>
+          <Btn className="w-full mb-3" onClick={submit} size="lg">{mode==="signup"?"Create account":"Sign in"} <I name="arrowRight" size={16}/></Btn>
+          <button onClick={()=>setMode(mode==="signup"?"signin":"signup")} className="w-full text-xs hover:underline" style={{color:C.muted}}>
+            {mode==="signup"?"Already have account? Sign in":"New here? Create account"}
+          </button>
+          <div className="mt-7 pt-5 text-[11px] font-mono tracking-wider uppercase" style={{borderTop:`1px solid ${C.border}`,color:C.mutedLt}}>Demo · Data saved locally</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== LANDING ===== */
+const Landing = ({ onAuth, onBrowse }) => (
+  <div className="min-h-screen paper-grain">
+    <div className="text-white text-xs font-medium py-2 px-4 text-center" style={{backgroundColor:C.ink}}>
+      <span className="font-mono tracking-wider">NEW</span><span className="mx-2 opacity-50">·</span>
+      Use code <span className="font-mono font-semibold" style={{color:C.emerald}}>WELCOME20</span> for 20% off your first project
+      <span className="mx-2 opacity-50">·</span><button onClick={onAuth} className="underline">Claim →</button>
+    </div>
+    <nav className="border-b" style={{borderColor:C.border}}>
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
+        <Logo size="md"/>
+        <div className="hidden md:flex items-center gap-8">
+          <button onClick={onBrowse} className="text-sm underline-hover">Discover</button>
+          <button onClick={onAuth} className="text-sm underline-hover">Start a project</button>
+          <button className="text-sm underline-hover">How it works</button>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={onAuth} className="text-sm font-medium hidden sm:block">Sign in</button>
+          <Btn onClick={onAuth} size="md">Get started</Btn>
+        </div>
+      </div>
+    </nav>
+    <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-20 pb-16">
+      <div className="grid lg:grid-cols-12 gap-10 items-center">
+        <div className="lg:col-span-7 float-up">
+          <div className="inline-flex items-center gap-2 mb-7">
+            <div className="w-2 h-2 rounded-full pulse-soft" style={{backgroundColor:C.emerald}}/>
+            <span className="font-mono text-xs tracking-widest uppercase" style={{color:C.muted}}>25 creators · $52K traded this week</span>
+          </div>
+          <h1 className="font-serif font-medium leading-[0.95] mb-7" style={{fontSize:"clamp(48px, 7vw, 96px)",letterSpacing:"-0.03em"}}>
+            Where AI<br/>builders<br/><em className="italic" style={{color:C.emerald}}>get paid.</em>
+          </h1>
+          <p className="text-lg leading-relaxed max-w-xl mb-9" style={{color:C.inkSoft}}>
+            Patronos Hub is the marketplace for AI agents, workflows, prompts, and datasets. List your product in five minutes. Reach thousands of buyers. Keep 85% of every sale.
+          </p>
+          <div className="flex flex-wrap gap-3 mb-12">
+            <Btn onClick={onAuth} size="lg" className="px-8">Start selling <I name="arrowRight" size={16}/></Btn>
+            <Btn onClick={onBrowse} variant="ghost" size="lg" className="px-8">Browse the hub</Btn>
+          </div>
+          <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm" style={{color:C.muted}}>
+            <span className="flex items-center gap-2"><I name="check" size={14} style={{color:C.emerald}}/> No setup fees</span>
+            <span className="flex items-center gap-2"><I name="check" size={14} style={{color:C.emerald}}/> Stripe payouts</span>
+            <span className="flex items-center gap-2"><I name="check" size={14} style={{color:C.emerald}}/> Global from day one</span>
+          </div>
+        </div>
+        <div className="lg:col-span-5 float-up" style={{animationDelay:"0.2s"}}>
+          <div className="relative">
+            <div className="absolute -top-4 -left-4 px-3 py-1.5 rounded-full text-xs font-medium z-10" style={{backgroundColor:C.coral,color:"#fff"}}>
+              <I name="flame" size={12} className="inline mr-1"/> TRENDING NOW
+            </div>
+            <div className="rounded-2xl overflow-hidden" style={{border:`1px solid ${C.border}`,backgroundColor:"#fff"}}>
+              <ProjectCover category="agents" height={240}/>
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Avatar name="neuralforge" size={28}/>
+                  <span className="text-sm font-medium">@neuralforge</span>
+                  <I name="badgeCheck" size={14} style={{color:C.emerald}}/>
+                </div>
+                <h3 className="font-serif text-2xl mb-2 leading-tight">Cold Outreach Sales Agent</h3>
+                <p className="text-sm mb-5" style={{color:C.muted}}>Autonomous SDR that researches leads, writes emails, and books meetings.</p>
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  <div><div className="font-mono text-xl font-semibold" style={{color:C.emerald}}>$23.6K</div><div className="text-[11px] uppercase tracking-wider" style={{color:C.muted}}>Earned</div></div>
+                  <div><div className="font-mono text-xl font-semibold">312</div><div className="text-[11px] uppercase tracking-wider" style={{color:C.muted}}>Buyers</div></div>
+                  <div><div className="font-mono text-xl font-semibold">4.9★</div><div className="text-[11px] uppercase tracking-wider" style={{color:C.muted}}>Rating</div></div>
+                </div>
+                <Btn className="w-full" size="md" onClick={onBrowse}>View project for $89</Btn>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section className="border-y" style={{borderColor:C.border,backgroundColor:C.paper}}>
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 py-10 grid grid-cols-2 md:grid-cols-4 gap-6">
+        {[{v:"85%",l:"Creator payout"},{v:"5 min",l:"To list"},{v:"$1.2M",l:"Paid YTD"},{v:"180+",l:"Countries"}].map((s,i)=>(
+          <div key={i}>
+            <div className="font-serif text-4xl font-medium">{s.v}</div>
+            <div className="text-xs uppercase tracking-wider mt-1" style={{color:C.muted}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+    <section className="max-w-7xl mx-auto px-6 sm:px-10 py-24">
+      <div className="grid lg:grid-cols-12 gap-10 mb-14">
+        <div className="lg:col-span-5">
+          <div className="font-mono text-xs tracking-widest uppercase mb-4" style={{color:C.emerald}}>HOW IT WORKS</div>
+          <h2 className="font-serif font-medium leading-tight" style={{fontSize:"clamp(36px, 5vw, 60px)",letterSpacing:"-0.02em"}}>Three steps to your <em className="italic">first dollar.</em></h2>
+        </div>
+        <div className="lg:col-span-7 flex items-end">
+          <p className="text-base leading-relaxed" style={{color:C.inkSoft}}>Whether you're selling a $9 prompt pack or a $999 enterprise agent, the path is the same: list, sell, withdraw.</p>
+        </div>
+      </div>
+      <div className="grid md:grid-cols-3 gap-6">
+        {[{n:"01",t:"List your product",d:"Upload an AI agent, prompt pack, workflow, or dataset. Go live instantly."},{n:"02",t:"Get discovered",d:"Built-in search, trending feeds, and category navigation put your product in front of the right buyers."},{n:"03",t:"Get paid",d:"Stripe-powered checkout. We take 15%, you keep 85%. Withdraw anytime."}].map(s=>(
+          <div key={s.n} className="p-7 rounded-2xl card-hover" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+            <div className="font-mono text-xs mb-5" style={{color:C.emerald}}>{s.n} / 03</div>
+            <h3 className="font-serif text-2xl mb-3 leading-tight">{s.t}</h3>
+            <p className="text-sm leading-relaxed" style={{color:C.muted}}>{s.d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+    <section className="max-w-7xl mx-auto px-6 sm:px-10 pb-24">
+      <div className="rounded-3xl p-10 sm:p-16 text-center relative overflow-hidden" style={{backgroundColor:C.ink}}>
+        <div className="absolute inset-0 opacity-30" style={{backgroundImage:`radial-gradient(circle at 20% 50%, ${C.emerald} 0%, transparent 50%)`}}/>
+        <div className="relative">
+          <h2 className="font-serif font-medium text-white leading-tight mb-5" style={{fontSize:"clamp(36px, 5vw, 60px)",letterSpacing:"-0.02em"}}>Ready to ship?</h2>
+          <p className="text-white text-opacity-70 text-lg mb-8 max-w-xl mx-auto">Join thousands of AI builders making real revenue from their tools, prompts, and agents.</p>
+          <Btn onClick={onAuth} variant="emerald" size="lg" className="px-8">Start your project <I name="arrowRight" size={16}/></Btn>
+        </div>
+      </div>
+    </section>
+    <footer className="border-t py-10" style={{borderColor:C.border,backgroundColor:C.paper}}>
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 text-center">
+        <div className="flex justify-center mb-4"><Logo size="md"/></div>
+        <div className="text-xs font-mono uppercase tracking-wider" style={{color:C.muted}}>© Patronos Hub · Built for AI builders · {new Date().getFullYear()}</div>
+      </div>
+    </footer>
+  </div>
+);
+
+/* ===== SHELL ===== */
+const Shell = ({ user, view, setView, onLogout, children, onUpgrade }) => {
+  const tabs = [
+    { id:"marketplace", label:"Discover",  icon:"globe" },
+    { id:"selling",     label:"My Studio", icon:"layoutDashboard" },
+    { id:"purchases",   label:"Library",   icon:"shoppingBag" },
+    { id:"wallet",      label:"Wallet",    icon:"wallet" },
+  ];
+  return (
+    <div className="min-h-screen paper-grain">
+      <nav className="sticky top-0 z-30 backdrop-blur-md" style={{backgroundColor:"rgba(245,240,230,0.85)",borderBottom:`1px solid ${C.border}`}}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          <Logo size="md"/>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {user.plan === "free" && <button onClick={onUpgrade} className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium" style={{backgroundColor:C.ink,color:C.cream}}><I name="crown" size={12}/> Upgrade</button>}
+            <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+              <Avatar name={user.name} size={26}/>
+              <span className="text-xs font-medium hidden sm:block">{user.name}</span>
+              {user.verified && <I name="badgeCheck" size={14} style={{color:C.emerald}}/>}
+            </div>
+            <button onClick={onLogout} className="p-2 rounded-full hover:bg-white" style={{color:C.muted}}><I name="logOut" size={16}/></button>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 flex gap-0 overflow-x-auto scroll-hide" style={{borderTop:`1px solid ${C.border}`}}>
+          {tabs.map(t => {
+            const active = view === t.id;
+            return (
+              <button key={t.id} onClick={()=>setView(t.id)} className="flex items-center gap-1.5 px-4 py-3.5 text-xs font-medium whitespace-nowrap relative" style={{color:active?C.ink:C.muted}}>
+                <I name={t.icon} size={14}/> {t.label}
+                {active && <div className="absolute bottom-0 left-3 right-3 h-0.5" style={{backgroundColor:C.ink}}/>}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">{children}</div>
+    </div>
+  );
+};
+
+/* ===== PROJECT CARD ===== */
+const ProjectCard = ({ listing, onSelect }) => {
+  const earned = listing.sales * listing.price * 0.85;
+  return (
+    <div className="text-left rounded-2xl overflow-hidden card-hover" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+      <button onClick={()=>onSelect(listing)} className="text-left w-full">
+        <div className="relative">
+          <ProjectCover category={listing.category} height={180}/>
+          {listing.featured && <div className="absolute top-3 left-3"><Pill color="ink"><I name="flame" size={10}/> Featured</Pill></div>}
+          <div className="absolute top-3 right-3"><Pill color="light"><I name="bookmark" size={11}/></Pill></div>
+        </div>
+      </button>
+      <div className="p-5">
+        <div className="flex items-center gap-2 mb-2.5">
+          <Avatar name={listing.seller} size={24}/>
+          <span className="text-xs font-medium" style={{color:C.inkSoft}}>@{listing.seller}</span>
+          {listing.verified && <I name="badgeCheck" size={12} style={{color:C.emerald}}/>}
+        </div>
+        <button onClick={()=>onSelect(listing)} className="text-left w-full">
+          <h3 className="font-serif text-xl font-medium mb-2 leading-tight" style={{letterSpacing:"-0.01em"}}>{listing.title}</h3>
+          <p className="text-sm mb-4 leading-relaxed line-clamp-2" style={{color:C.muted}}>{listing.desc}</p>
+          <div className="grid grid-cols-3 gap-2 pb-4 mb-4" style={{borderBottom:`1px solid ${C.border}`}}>
+            <div><div className="font-mono text-sm font-semibold" style={{color:C.emerald}}>${earned.toFixed(0)}</div><div className="text-[9px] uppercase tracking-wider" style={{color:C.muted}}>Earned</div></div>
+            <div><div className="font-mono text-sm font-semibold">{listing.sales}</div><div className="text-[9px] uppercase tracking-wider" style={{color:C.muted}}>Buyers</div></div>
+            <div><div className="font-mono text-sm font-semibold flex items-center gap-0.5"><I name="star" size={10} style={{color:C.amber,fill:C.amber}}/>{listing.rating}</div><div className="text-[9px] uppercase tracking-wider" style={{color:C.muted}}>Rating</div></div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div><div className="text-[10px] uppercase tracking-wider" style={{color:C.muted}}>Price</div><div className="font-serif text-2xl font-semibold">${listing.price}</div></div>
+            <div className="px-4 py-2 rounded-full text-xs font-medium flex items-center gap-1.5" style={{backgroundColor:C.cream}}>View <I name="arrowRight" size={12}/></div>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ===== MARKETPLACE ===== */
+const Marketplace = ({ listings, onSelect, currentUser, allReviews }) => {
+  const [q,setQ] = useState("");
+  const [cat,setCat] = useState("all");
+  const [sort,setSort] = useState("trending");
+
+  const enriched = useMemo(()=> listings.map(l => {
+    const rs = allReviews.filter(r => r.listingId === l.id);
+    if (rs.length === 0) return l;
+    const avg = rs.reduce((a,r) => a+r.rating, 0) / rs.length;
+    return { ...l, rating: Number(avg.toFixed(1)), reviewCount: rs.length };
+  }), [listings, allReviews]);
+
+  const filtered = useMemo(()=>{
+    let r = [...enriched];
+    if (cat !== "all") r = r.filter(l => l.category === cat);
+    if (q.trim()) {
+      const s = q.toLowerCase();
+      r = r.filter(l => l.title.toLowerCase().includes(s) || l.desc.toLowerCase().includes(s) || l.seller.toLowerCase().includes(s));
+    }
+    if (sort==="trending") r.sort((a,b) => (b.trending?1:0)-(a.trending?1:0) || (b.featured?1:0)-(a.featured?1:0) || b.sales-a.sales);
+    else if (sort==="newest") r.sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+    else if (sort==="earned") r.sort((a,b) => (b.sales*b.price)-(a.sales*a.price));
+    else if (sort==="rating") r.sort((a,b) => b.rating-a.rating);
+    return r;
+  }, [enriched, q, cat, sort]);
+
+  const hero = enriched.find(l => l.featured && l.trending) || enriched[0];
+  const picks = enriched.filter(l => l.featured).slice(0,3);
+  const trending = enriched.filter(l => l.trending).slice(0,4);
+
+  return (
+    <div>
+      <div className="mb-10">
+        <div className="font-mono text-xs tracking-widest uppercase mb-3" style={{color:C.emerald}}>// Discover</div>
+        <h1 className="font-serif font-medium leading-tight mb-2" style={{fontSize:"clamp(36px, 5vw, 56px)",letterSpacing:"-0.02em"}}>
+          Hey {currentUser.name?.split(" ")[0]},<br/><em className="italic">what's new today?</em>
+        </h1>
+        <p className="text-base mt-3" style={{color:C.muted}}>{listings.length} live projects · {listings.reduce((a,l)=>a+l.sales,0).toLocaleString()} buyers · ${listings.reduce((a,l)=>a+l.sales*l.price,0).toLocaleString()} volume</p>
+      </div>
+
+      {hero && cat==="all" && !q && (
+        <div className="mb-14 rounded-3xl overflow-hidden grid lg:grid-cols-2 card-hover" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+          <button onClick={()=>onSelect(hero)} className="text-left"><ProjectCover category={hero.category} height={420}/></button>
+          <button onClick={()=>onSelect(hero)} className="p-8 sm:p-12 text-left flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Pill color="ink"><I name="flame" size={11}/> Project of the week</Pill>
+                {hero.verified && <Pill color="emerald"><I name="badgeCheck" size={11}/> Verified</Pill>}
+              </div>
+              <h2 className="font-serif font-medium text-4xl sm:text-5xl mb-4 leading-tight" style={{letterSpacing:"-0.02em"}}>{hero.title}</h2>
+              <p className="text-base leading-relaxed mb-6" style={{color:C.muted}}>{hero.desc}</p>
+              <div className="flex items-center gap-2.5 mb-6">
+                <Avatar name={hero.seller} size={32}/><span className="text-sm font-medium">@{hero.seller}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 pt-6" style={{borderTop:`1px solid ${C.border}`}}>
+              <div><div className="font-serif text-2xl font-semibold" style={{color:C.emerald}}>${(hero.sales*hero.price*0.85).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[10px] uppercase tracking-wider mt-0.5" style={{color:C.muted}}>Earned</div></div>
+              <div><div className="font-serif text-2xl font-semibold">{hero.sales}</div><div className="text-[10px] uppercase tracking-wider mt-0.5" style={{color:C.muted}}>Buyers</div></div>
+              <div><div className="font-serif text-2xl font-semibold">{hero.rating}</div><div className="text-[10px] uppercase tracking-wider mt-0.5" style={{color:C.muted}}>Rating</div></div>
+            </div>
+          </button>
+        </div>
+      )}
+
+      <div className="rounded-2xl p-2 mb-3 flex flex-wrap gap-2 items-center" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+        <div className="flex-1 min-w-[200px] relative">
+          <I name="search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{color:C.muted}}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search projects, creators, categories..." className="w-full pl-11 pr-4 py-2.5 rounded-lg text-sm bg-transparent" style={{outline:"none"}}/>
+        </div>
+        <select value={sort} onChange={e=>setSort(e.target.value)} className="px-4 py-2.5 rounded-lg text-sm bg-transparent border-0">
+          <option value="trending">🔥 Trending</option>
+          <option value="newest">✨ Newest</option>
+          <option value="earned">💰 Top earning</option>
+          <option value="rating">⭐ Top rated</option>
+        </select>
+      </div>
+
+      <div className="flex gap-2 mb-12 overflow-x-auto scroll-hide pb-1">
+        <button onClick={()=>setCat("all")} className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap" style={{backgroundColor:cat==="all"?C.ink:"#fff",color:cat==="all"?C.cream:C.ink,border:`1px solid ${cat==="all"?C.ink:C.border}`}}>All projects</button>
+        {CATEGORIES.map(c => {
+          const active = cat===c.id;
+          return <button key={c.id} onClick={()=>setCat(c.id)} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap" style={{backgroundColor:active?C.ink:"#fff",color:active?C.cream:C.ink,border:`1px solid ${active?C.ink:C.border}`}}><I name={c.iconKey} size={12}/> {c.name}</button>;
+        })}
+      </div>
+
+      {cat==="all" && !q && picks.length>0 && (
+        <div className="mb-14">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <div className="font-mono text-xs uppercase tracking-widest mb-1" style={{color:C.coral}}><I name="sparkles" size={11} className="inline mr-1.5"/> Staff Picks</div>
+              <h2 className="font-serif text-3xl font-medium" style={{letterSpacing:"-0.02em"}}>Editor-curated <em className="italic">favorites</em></h2>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">{picks.map(l => <ProjectCard key={l.id} listing={l} onSelect={onSelect}/>)}</div>
+        </div>
+      )}
+
+      <div className="mb-6 flex items-end justify-between">
+        <h2 className="font-serif text-3xl font-medium" style={{letterSpacing:"-0.02em"}}>
+          {cat==="all" ? <>All projects <span style={{color:C.muted}}>· {filtered.length}</span></> : `${CATEGORIES.find(c=>c.id===cat)?.name} · ${filtered.length}`}
+        </h2>
+      </div>
+
+      {filtered.length===0 ? (
+        <div className="text-center py-20 rounded-2xl" style={{border:`1px dashed ${C.border}`,backgroundColor:"#fff"}}>
+          <div className="font-serif text-2xl mb-2">No projects match.</div>
+          <Btn variant="ghost" onClick={()=>{setQ("");setCat("all");}}>Reset filters</Btn>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">{filtered.map(l => <ProjectCard key={l.id} listing={l} onSelect={onSelect}/>)}</div>
+      )}
+    </div>
+  );
+};
+
+/* ===== PROJECT DETAIL ===== */
+const ProjectDetail = ({ listing, onBack, currentUser, onPurchase, reviews, onAddReview }) => {
+  const [showCheckout,setShowCheckout] = useState(false);
+  const [purchased,setPurchased] = useState(false);
+  const [tab,setTab] = useState("story");
+  const [showReview,setShowReview] = useState(false);
+  const cat = CATEGORIES.find(c=>c.id===listing.category);
+  const owned = currentUser.purchases?.some(p => p.listingId === listing.id);
+  const isOwn = listing.sellerEmail === currentUser.email;
+  const earned = listing.sales * listing.price * 0.85;
+  const userReview = reviews.find(r => r.reviewer === currentUser.name?.toLowerCase().replace(/\s+/g,""));
+  const avgRating = reviews.length>0 ? (reviews.reduce((a,r)=>a+r.rating,0)/reviews.length) : listing.rating;
+
+  const buy = async (coupon) => { await onPurchase(listing, coupon); setPurchased(true); setShowCheckout(false); };
+  const submitReview = async (r,c) => { await onAddReview(listing.id, r, c); setShowReview(false); };
+
+  return (
+    <div className="float-up">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-6 underline-hover" style={{color:C.muted}}><I name="chevronLeft" size={14}/> Back to discover</button>
+      <div className="grid lg:grid-cols-12 gap-8 mb-10">
+        <div className="lg:col-span-7">
+          <div className="rounded-2xl overflow-hidden mb-6" style={{border:`1px solid ${C.border}`}}><ProjectCover category={listing.category} height={400}/></div>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <Pill color="cream">{cat?.name}</Pill>
+            {listing.featured && <Pill color="ink"><I name="flame" size={10}/> Featured</Pill>}
+            {listing.verified && <Pill color="emerald"><I name="badgeCheck" size={10}/> Verified</Pill>}
+            {listing.trending && <Pill color="coral"><I name="trending" size={10}/> Trending</Pill>}
+          </div>
+          <h1 className="font-serif font-medium leading-tight mb-5" style={{fontSize:"clamp(32px, 4.5vw, 52px)",letterSpacing:"-0.02em"}}>{listing.title}</h1>
+          <div className="flex items-center gap-3 mb-4">
+            <Avatar name={listing.seller} size={40}/>
+            <div><div className="font-medium text-sm flex items-center gap-1.5">@{listing.seller} {listing.verified && <I name="badgeCheck" size={14} style={{color:C.emerald}}/>}</div><div className="text-xs" style={{color:C.muted}}>{listing.sales} sales</div></div>
+          </div>
+        </div>
+        <div className="lg:col-span-5">
+          <div className="lg:sticky lg:top-32">
+            <div className="rounded-2xl p-6" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+              <div className="grid grid-cols-3 gap-4 pb-5 mb-5" style={{borderBottom:`1px solid ${C.border}`}}>
+                <div><div className="font-serif text-2xl font-semibold" style={{color:C.emerald}}>${earned.toFixed(0)}</div><div className="text-[10px] uppercase tracking-wider mt-0.5" style={{color:C.muted}}>Earned</div></div>
+                <div><div className="font-serif text-2xl font-semibold">{listing.sales}</div><div className="text-[10px] uppercase tracking-wider mt-0.5" style={{color:C.muted}}>Buyers</div></div>
+                <div><div className="font-serif text-2xl font-semibold flex items-center gap-1"><I name="star" size={16} style={{color:C.amber,fill:C.amber}}/>{avgRating.toFixed(1)}</div><div className="text-[10px] uppercase tracking-wider mt-0.5" style={{color:C.muted}}>{reviews.length} reviews</div></div>
+              </div>
+              <div className="mb-5">
+                <div className="flex items-baseline gap-2 mb-1"><span className="font-serif text-4xl font-semibold">${listing.price}</span><span className="text-sm" style={{color:C.muted}}>one-time</span></div>
+                <div className="text-xs" style={{color:C.muted}}>Instant download · Lifetime access</div>
+              </div>
+              {isOwn ? (
+                <div className="text-center py-3 px-4 rounded-full text-sm font-medium" style={{backgroundColor:C.cream,color:C.muted,border:`1px solid ${C.border}`}}>This is your project</div>
+              ) : owned||purchased ? (
+                <div className="space-y-2">
+                  <div className="text-center py-3 px-4 rounded-full text-sm font-medium flex items-center justify-center gap-2" style={{backgroundColor:C.emerald,color:"#fff"}}><I name="check" size={14}/> Purchased</div>
+                  <Btn variant="ghost" className="w-full"><I name="download" size={14}/> Download</Btn>
+                  {!userReview && <Btn variant="light" className="w-full" onClick={()=>setShowReview(true)}><I name="star" size={13}/> Leave a review</Btn>}
+                </div>
+              ) : (
+                <Btn variant="primary" size="lg" className="w-full mb-3" onClick={()=>setShowCheckout(true)}>Back this project · ${listing.price} <I name="arrowRight" size={16}/></Btn>
+              )}
+              <div className="flex gap-2 mt-3">
+                <Btn variant="light" className="flex-1" size="sm"><I name="heart" size={13}/> Save</Btn>
+                <Btn variant="light" className="flex-1" size="sm"><I name="share" size={13}/> Share</Btn>
+              </div>
+              <div className="mt-5 pt-5 space-y-2.5" style={{borderTop:`1px solid ${C.border}`}}>
+                <div className="flex items-center gap-2 text-xs" style={{color:C.muted}}><I name="lock" size={12} style={{color:C.emerald}}/> Secure Stripe checkout</div>
+                <div className="flex items-center gap-2 text-xs" style={{color:C.muted}}><I name="award" size={12} style={{color:C.emerald}}/> 30-day money-back</div>
+                <div className="flex items-center gap-2 text-xs" style={{color:C.muted}}><I name="zap" size={12} style={{color:C.emerald}}/> Instant download</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="border-b mb-8 flex gap-1 overflow-x-auto scroll-hide" style={{borderColor:C.border}}>
+        {[{id:"story",label:"Story",icon:"file"},{id:"included",label:"What's included",icon:"layers"},{id:"reviews",label:`Reviews (${reviews.length})`,icon:"star"}].map(t => {
+          const active = tab===t.id;
+          return <button key={t.id} onClick={()=>setTab(t.id)} className="flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap relative" style={{color:active?C.ink:C.muted}}><I name={t.icon} size={14}/> {t.label}{active && <div className="absolute bottom-0 left-3 right-3 h-0.5" style={{backgroundColor:C.ink}}/>}</button>;
+        })}
+      </div>
+      <div className="mb-12">
+        {tab==="story" && (
+          <article>
+            <h2 className="font-serif text-3xl font-medium mb-5 leading-tight" style={{letterSpacing:"-0.02em"}}>About this project</h2>
+            <p className="text-base leading-relaxed mb-5" style={{color:C.inkSoft}}>{listing.desc}</p>
+            <p className="text-base leading-relaxed mb-5" style={{color:C.inkSoft}}>Built and battle-tested by @{listing.seller}, this project has helped {listing.sales} buyers ship faster and earn more.</p>
+            <h3 className="font-serif text-2xl font-medium mt-8 mb-4">Why creators love it</h3>
+            <ul className="space-y-3">
+              {["Production-ready from day one — no setup hell.","Documentation that actually helps. Real examples, not boilerplate.","Direct creator support via Discord and email.","Free updates for 12 months."].map(x => (
+                <li key={x} className="flex items-start gap-3 text-sm" style={{color:C.inkSoft}}>
+                  <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5" style={{backgroundColor:C.emerald}}><I name="check" size={12} className="text-white"/></div>{x}
+                </li>
+              ))}
+            </ul>
+          </article>
+        )}
+        {tab==="included" && (
+          <div>
+            <h2 className="font-serif text-3xl font-medium mb-5 leading-tight" style={{letterSpacing:"-0.02em"}}>What's in the box</h2>
+            <div className="space-y-3">
+              {[{t:"Full source code & documentation",d:"Clean, commented, production-ready files."},{t:"Setup guide",d:"Up and running in under 10 minutes."},{t:"Direct creator support",d:"Email + Discord access for 90 days."},{t:"Free updates for 12 months",d:"API changes, bug fixes, new features."},{t:"Commercial use license",d:"Use it in client work, your own SaaS."}].map(f => (
+                <div key={f.t} className="rounded-xl p-5" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center" style={{backgroundColor:C.emerald}}><I name="check" size={14} className="text-white"/></div>
+                    <div><div className="font-medium text-sm mb-1">{f.t}</div><div className="text-xs" style={{color:C.muted}}>{f.d}</div></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {tab==="reviews" && (
+          <div>
+            <div className="rounded-2xl p-6 mb-5" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+              <div className="flex items-center gap-6">
+                <div>
+                  <div className="font-serif text-5xl font-semibold" style={{color:C.amber}}>{avgRating.toFixed(1)}</div>
+                  <StarRating value={avgRating} size={14}/>
+                  <div className="text-xs mt-1" style={{color:C.muted}}>{reviews.length} reviews</div>
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  {[5,4,3,2,1].map(n => {
+                    const count = reviews.filter(r => Math.round(r.rating)===n).length;
+                    const pct = reviews.length>0 ? (count/reviews.length)*100 : 0;
+                    return (
+                      <div key={n} className="flex items-center gap-2 text-xs">
+                        <span className="font-mono w-3" style={{color:C.muted}}>{n}</span>
+                        <I name="star" size={10} style={{color:C.amber,fill:C.amber}}/>
+                        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{backgroundColor:C.cream}}>
+                          <div className="h-full rounded-full" style={{width:`${pct}%`,backgroundColor:C.amber}}/>
+                        </div>
+                        <span className="font-mono w-6 text-right" style={{color:C.muted}}>{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {owned && !userReview && <div className="mt-5 pt-5" style={{borderTop:`1px solid ${C.border}`}}><Btn variant="primary" onClick={()=>setShowReview(true)}><I name="edit" size={13}/> Write your review</Btn></div>}
+            </div>
+            {reviews.length===0 ? (
+              <div className="text-center py-12 rounded-2xl" style={{border:`1px dashed ${C.border}`,backgroundColor:"#fff"}}>
+                <I name="star" size={24} className="mx-auto mb-2" style={{color:C.mutedLt}}/>
+                <div className="text-sm" style={{color:C.muted}}>No reviews yet. {owned && "Be the first!"}</div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reviews.sort((a,b)=>b.ts-a.ts).map((r,i)=>(
+                  <div key={i} className="rounded-xl p-5" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2.5"><Avatar name={r.reviewer} size={32}/><div><div className="text-sm font-medium">@{r.reviewer}</div><div className="text-[11px] font-mono uppercase tracking-wider" style={{color:C.muted}}>{timeAgo(r.ts)}</div></div></div>
+                      <StarRating value={r.rating} size={13}/>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{color:C.inkSoft}}>{r.comment}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {showCheckout && <CheckoutModal listing={listing} onClose={()=>setShowCheckout(false)} onConfirm={buy}/>}
+      {showReview && <ReviewForm listing={listing} onClose={()=>setShowReview(false)} onSubmit={submitReview}/>}
+    </div>
+  );
+};
+
+/* ===== CHECKOUT WITH COUPON ===== */
+const CheckoutModal = ({ listing, onClose, onConfirm }) => {
+  const [coupon,setCoupon] = useState("");
+  const [applied,setApplied] = useState(null);
+  const [error,setError] = useState("");
+  const discount = applied ? listing.price * applied.discount : 0;
+  const total = listing.price - discount;
+  const apply = () => {
+    const c = COUPONS[coupon.toUpperCase().trim()];
+    if (!c) { setError("Invalid code"); setApplied(null); return; }
+    if (!c.active) { setError("Code expired"); setApplied(null); return; }
+    setApplied({ code:coupon.toUpperCase().trim(), ...c });
+    setError("");
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{backgroundColor:"rgba(13,13,13,0.6)"}}>
+      <div className="relative w-full max-w-md float-up">
+        <div className="rounded-2xl p-8" style={{backgroundColor:C.paper,border:`1px solid ${C.border}`}}>
+          <div className="flex items-center justify-between mb-6">
+            <div className="font-mono text-xs uppercase tracking-widest" style={{color:C.emerald}}>// Checkout</div>
+            <button onClick={onClose} style={{color:C.muted}}><I name="x" size={18}/></button>
+          </div>
+          <h2 className="font-serif text-3xl font-medium mb-1 leading-tight">Confirm purchase</h2>
+          <p className="text-sm mb-6" style={{color:C.muted}}>{listing.title}</p>
+          <div className="mb-5">
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <I name="percent" size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{color:C.muted}}/>
+                <input value={coupon} onChange={e=>{setCoupon(e.target.value);setError("");}} placeholder="Coupon code" className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm font-mono uppercase bg-white" style={{border:`1px solid ${C.border}`}}/>
+              </div>
+              <Btn variant="ghost" size="sm" onClick={apply} disabled={!coupon.trim()}>Apply</Btn>
+            </div>
+            {error && <div className="text-xs mt-1.5" style={{color:C.coral}}>{error}</div>}
+            {applied && (
+              <div className="mt-2 px-3 py-2 rounded-lg flex items-center justify-between text-xs" style={{backgroundColor:`${C.emerald}15`,color:C.emeraldDk}}>
+                <span><I name="check" size={11} className="inline mr-1.5"/> <span className="font-mono font-semibold">{applied.code}</span> · {applied.label}</span>
+                <button onClick={()=>{setApplied(null);setCoupon("");}}><I name="x" size={12}/></button>
+              </div>
+            )}
+            <div className="mt-2 text-[11px]" style={{color:C.muted}}>Try <span className="font-mono">WELCOME20</span> for 20% off</div>
+          </div>
+          <div className="space-y-2.5 mb-6">
+            <div className="flex justify-between text-sm"><span style={{color:C.muted}}>Project price</span><span className="font-mono">${listing.price.toFixed(2)}</span></div>
+            {applied && <div className="flex justify-between text-sm"><span style={{color:C.emerald}}>Discount ({Math.round(applied.discount*100)}%)</span><span className="font-mono" style={{color:C.emerald}}>-${discount.toFixed(2)}</span></div>}
+            <div className="pt-3 flex justify-between" style={{borderTop:`1px solid ${C.border}`}}><span className="font-medium">Total</span><span className="font-serif text-2xl font-semibold">${total.toFixed(2)}</span></div>
+          </div>
+          <div className="rounded-xl p-4 mb-6" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+            <div className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{color:C.muted}}>Card on file</div>
+            <div className="flex items-center justify-between"><span className="font-mono text-sm">•••• •••• •••• 4242</span><span className="text-[10px] font-mono px-2 py-0.5 rounded uppercase tracking-wider" style={{backgroundColor:C.cream,color:C.muted}}>Demo</span></div>
+          </div>
+          <Btn variant="emerald" size="lg" className="w-full" onClick={()=>onConfirm(applied)}>Pay ${total.toFixed(2)} <I name="lock" size={14}/></Btn>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== REVIEW FORM ===== */
+const ReviewForm = ({ listing, onClose, onSubmit }) => {
+  const [rating,setRating] = useState(5);
+  const [comment,setComment] = useState("");
+  const submit = () => { if (comment.trim().length<10) { alert("At least 10 characters."); return; } onSubmit(rating, comment.trim()); };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{backgroundColor:"rgba(13,13,13,0.6)"}}>
+      <div className="relative w-full max-w-md float-up">
+        <div className="rounded-2xl p-8" style={{backgroundColor:C.paper,border:`1px solid ${C.border}`}}>
+          <div className="flex items-center justify-between mb-6">
+            <div className="font-mono text-xs uppercase tracking-widest" style={{color:C.emerald}}>// Review</div>
+            <button onClick={onClose} style={{color:C.muted}}><I name="x" size={18}/></button>
+          </div>
+          <h2 className="font-serif text-3xl font-medium mb-1 leading-tight">Share your <em className="italic">experience.</em></h2>
+          <p className="text-sm mb-6" style={{color:C.muted}}>Reviewing: {listing.title}</p>
+          <div className="mb-5">
+            <label className="text-[11px] uppercase tracking-widest font-medium mb-2 block" style={{color:C.muted}}>Your rating</label>
+            <div className="flex items-center gap-1"><StarRating value={rating} size={28} interactive onChange={setRating}/><span className="ml-3 font-mono text-sm" style={{color:C.muted}}>{rating}/5</span></div>
+          </div>
+          <div className="mb-6">
+            <label className="text-[11px] uppercase tracking-widest font-medium mb-2 block" style={{color:C.muted}}>Your review</label>
+            <textarea value={comment} onChange={e=>setComment(e.target.value)} rows={5} placeholder="What did you like? What could be improved?" className="w-full px-4 py-3 rounded-lg text-sm bg-white resize-none" style={{border:`1px solid ${C.border}`}} maxLength={500}/>
+            <div className="text-[11px] mt-1.5" style={{color:C.muted}}>{comment.length} / 500</div>
+          </div>
+          <Btn variant="primary" size="lg" className="w-full" onClick={submit}><I name="send" size={14}/> Post review</Btn>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== STUDIO ===== */
+const Studio = ({ user, listings, onCreate, onPromote, onUpgrade }) => {
+  const [showForm,setShowForm] = useState(false);
+  const totalSales = listings.reduce((a,l)=>a+l.sales*l.price, 0);
+  const totalRev = totalSales * (1-FEE_RATE);
+  const totalUnits = listings.reduce((a,l)=>a+l.sales, 0);
+  const fees = totalSales * FEE_RATE;
+  return (
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
+        <div>
+          <div className="font-mono text-xs uppercase tracking-widest mb-2" style={{color:C.emerald}}>// Your studio</div>
+          <h1 className="font-serif font-medium leading-tight" style={{fontSize:"clamp(32px, 4.5vw, 48px)",letterSpacing:"-0.02em"}}>Build. <em className="italic">Ship.</em> Earn.</h1>
+        </div>
+        <Btn onClick={()=>{ if (user.plan==="free" && listings.length>=1) { onUpgrade(); return; } setShowForm(true); }} size="lg"><I name="plus" size={16}/> New project</Btn>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Stat label="Total earned" value={`$${totalRev.toFixed(0)}`} sub="After 15% fee" hero/>
+        <Stat label="Gross sales" value={`$${totalSales.toFixed(0)}`} sub={`${totalUnits} units sold`}/>
+        <Stat label="Active projects" value={listings.length} sub={user.plan==="free"?"1 free, upgrade for more":"Unlimited"}/>
+        <Stat label="Platform fees" value={`$${fees.toFixed(0)}`} sub="Paid to Patronos"/>
+      </div>
+      {listings.length===0 ? (
+        <div className="text-center py-20 rounded-2xl" style={{border:`1px dashed ${C.border}`,backgroundColor:"#fff"}}>
+          <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor:C.cream}}><I name="rocket" size={22} style={{color:C.muted}}/></div>
+          <div className="font-serif text-2xl mb-2">Your studio is empty.</div>
+          <div className="text-sm mb-6" style={{color:C.muted}}>Launch your first project — it takes 5 minutes.</div>
+          <Btn onClick={()=>setShowForm(true)} size="lg"><I name="plus" size={16}/> Start your first project</Btn>
+        </div>
+      ) : (
+        <div>
+          <h2 className="font-serif text-2xl font-medium mb-5">Your projects</h2>
+          <div className="grid lg:grid-cols-2 gap-4">
+            {listings.map(l => {
+              const cat = CATEGORIES.find(c=>c.id===l.category);
+              const rev = l.sales*l.price*(1-FEE_RATE);
+              return (
+                <div key={l.id} className="rounded-2xl overflow-hidden" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+                  <ProjectCover category={l.category} height={140}/>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div><h3 className="font-serif text-lg font-medium leading-tight">{l.title}</h3><div className="text-xs mt-1" style={{color:C.muted}}>${l.price} · {cat?.name}</div></div>
+                      {l.featured && <Pill color="ink"><I name="flame" size={10}/></Pill>}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mb-4 pb-4" style={{borderBottom:`1px solid ${C.border}`}}>
+                      <div><div className="font-mono text-base font-semibold" style={{color:C.emerald}}>${rev.toFixed(0)}</div><div className="text-[9px] uppercase tracking-wider" style={{color:C.muted}}>Earned</div></div>
+                      <div><div className="font-mono text-base font-semibold">{l.sales}</div><div className="text-[9px] uppercase tracking-wider" style={{color:C.muted}}>Sold</div></div>
+                      <div><div className="font-mono text-base font-semibold">{l.rating}</div><div className="text-[9px] uppercase tracking-wider" style={{color:C.muted}}>Rating</div></div>
+                    </div>
+                    <div className="flex gap-2">
+                      {!l.featured && <Btn variant="light" size="sm" className="flex-1" onClick={()=>onPromote(l)}><I name="flame" size={11}/> Promote $50</Btn>}
+                      <Btn variant="ghost" size="sm" className="flex-1">Edit</Btn>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {showForm && <ListProductForm onClose={()=>setShowForm(false)} onCreate={async d=>{ await onCreate(d); setShowForm(false); }} sellerName={user.name} sellerEmail={user.email}/>}
+    </div>
+  );
+};
+
+const Stat = ({ label, value, sub, hero }) => (
+  <div className="rounded-2xl p-5" style={{backgroundColor:hero?C.ink:"#fff",border:`1px solid ${hero?C.ink:C.border}`,color:hero?C.cream:C.ink}}>
+    <div className="text-xs uppercase tracking-wider mb-2" style={{color:hero?"rgba(255,255,255,0.6)":C.muted}}>{label}</div>
+    <div className="font-serif text-3xl font-semibold leading-none" style={{color:hero?C.emerald:C.ink}}>{value}</div>
+    <div className="text-xs mt-2" style={{color:hero?"rgba(255,255,255,0.5)":C.muted}}>{sub}</div>
+  </div>
+);
+
+const ListProductForm = ({ onClose, onCreate, sellerName, sellerEmail }) => {
+  const [title,setTitle] = useState("");
+  const [desc,setDesc] = useState("");
+  const [price,setPrice] = useState(29);
+  const [category,setCategory] = useState("agents");
+  const submit = () => { if (!title.trim()||!desc.trim()||price<1) { alert("Fill all fields. Min $1."); return; } onCreate({title:title.trim(),desc:desc.trim(),price:Number(price),category,seller:sellerName.toLowerCase().replace(/\s+/g,""),sellerEmail}); };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto" style={{backgroundColor:"rgba(13,13,13,0.6)"}}>
+      <div className="relative w-full max-w-lg float-up my-8">
+        <div className="rounded-2xl p-8" style={{backgroundColor:C.paper,border:`1px solid ${C.border}`}}>
+          <div className="flex items-center justify-between mb-6">
+            <div className="font-mono text-xs uppercase tracking-widest" style={{color:C.emerald}}>// Launch project</div>
+            <button onClick={onClose} style={{color:C.muted}}><I name="x" size={18}/></button>
+          </div>
+          <h2 className="font-serif text-3xl font-medium mb-1 leading-tight">Tell us about your <em className="italic">project.</em></h2>
+          <p className="text-sm mb-6" style={{color:C.muted}}>Set it live in under a minute.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="text-[11px] uppercase tracking-widest font-medium mb-1.5 block" style={{color:C.muted}}>Title</label>
+              <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Cold outreach agent" className="w-full px-4 py-3 rounded-lg text-sm bg-white" style={{border:`1px solid ${C.border}`}} maxLength={60}/>
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-widest font-medium mb-1.5 block" style={{color:C.muted}}>Description</label>
+              <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={4} placeholder="What does it do? Who is it for?" className="w-full px-4 py-3 rounded-lg text-sm bg-white resize-none" style={{border:`1px solid ${C.border}`}} maxLength={300}/>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] uppercase tracking-widest font-medium mb-1.5 block" style={{color:C.muted}}>Category</label>
+                <select value={category} onChange={e=>setCategory(e.target.value)} className="w-full px-4 py-3 rounded-lg text-sm bg-white" style={{border:`1px solid ${C.border}`}}>{CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              </div>
+              <div>
+                <label className="text-[11px] uppercase tracking-widest font-medium mb-1.5 block" style={{color:C.muted}}>Price (USD)</label>
+                <input type="number" min={1} value={price} onChange={e=>setPrice(e.target.value)} className="w-full px-4 py-3 rounded-lg text-sm font-mono bg-white" style={{border:`1px solid ${C.border}`}}/>
+              </div>
+            </div>
+            <div className="rounded-xl p-4" style={{backgroundColor:C.cream,border:`1px solid ${C.border}`}}>
+              <div className="text-[11px] uppercase tracking-widest mb-1" style={{color:C.muted}}>Your payout per sale (after 15% fee)</div>
+              <div className="font-serif text-3xl font-semibold" style={{color:C.emerald}}>${(price*0.85).toFixed(2)}</div>
+            </div>
+          </div>
+          <Btn className="w-full mt-6" size="lg" onClick={submit}>Launch project <I name="arrowRight" size={16}/></Btn>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== LIBRARY ===== */
+const Library = ({ user, allListings, onSelect }) => {
+  const purchased = (user.purchases||[]).map(p => { const l = allListings.find(x=>x.id===p.listingId); return l ? {...l,purchasedAt:p.purchasedAt} : null; }).filter(Boolean);
+  return (
+    <div>
+      <div className="mb-10">
+        <div className="font-mono text-xs uppercase tracking-widest mb-2" style={{color:C.emerald}}>// Your library</div>
+        <h1 className="font-serif font-medium leading-tight" style={{fontSize:"clamp(32px, 4.5vw, 48px)",letterSpacing:"-0.02em"}}>Everything you've <em className="italic">backed.</em></h1>
+        <p className="text-sm mt-3" style={{color:C.muted}}>{purchased.length} {purchased.length===1?"project":"projects"}</p>
+      </div>
+      {purchased.length===0 ? (
+        <div className="text-center py-20 rounded-2xl" style={{border:`1px dashed ${C.border}`,backgroundColor:"#fff"}}>
+          <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor:C.cream}}><I name="shoppingBag" size={22} style={{color:C.muted}}/></div>
+          <div className="font-serif text-2xl mb-2">Library is empty.</div>
+          <div className="text-sm" style={{color:C.muted}}>Discover projects to back.</div>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {purchased.map(p => (
+            <button key={p.id} onClick={()=>onSelect(p)} className="text-left rounded-2xl overflow-hidden card-hover" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+              <ProjectCover category={p.category} height={140}/>
+              <div className="p-5">
+                <h3 className="font-serif text-lg font-medium leading-tight mb-1">{p.title}</h3>
+                <div className="text-xs mb-4" style={{color:C.muted}}>@{p.seller}</div>
+                <div className="flex gap-2"><Btn variant="light" className="flex-1" size="sm"><I name="download" size={13}/> Download</Btn><Btn variant="ghost" size="sm"><I name="star" size={13}/></Btn></div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ===== WALLET ===== */
+const Wallet = ({ user, listings, onUpgrade }) => {
+  const myListings = listings.filter(l => l.sellerEmail === user.email);
+  const lifetime = myListings.reduce((a,l) => a + l.sales*l.price*(1-FEE_RATE), 0);
+  const balance = user.balance || 0;
+  return (
+    <div>
+      <div className="mb-10">
+        <div className="font-mono text-xs uppercase tracking-widest mb-2" style={{color:C.emerald}}>// Your wallet</div>
+        <h1 className="font-serif font-medium leading-tight" style={{fontSize:"clamp(32px, 4.5vw, 48px)",letterSpacing:"-0.02em"}}>Earnings & <em className="italic">payouts.</em></h1>
+      </div>
+      <div className="relative rounded-3xl p-8 sm:p-12 mb-6 overflow-hidden" style={{backgroundColor:C.ink}}>
+        <div className="absolute inset-0 opacity-30" style={{backgroundImage:`radial-gradient(circle at 70% 50%, ${C.emerald} 0%, transparent 60%)`}}/>
+        <div className="relative">
+          <div className="font-mono text-xs uppercase tracking-widest text-white opacity-60 mb-3">Available balance</div>
+          <div className="font-serif text-6xl sm:text-7xl font-semibold mb-2 leading-none" style={{color:C.emerald}}>${balance.toFixed(2)}</div>
+          <div className="text-sm text-white opacity-50 mb-7">Lifetime earnings · ${lifetime.toFixed(2)}</div>
+          <Btn variant="emerald" size="lg" disabled={balance<10}>Withdraw to bank</Btn>
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4 mb-6">
+        <div className="rounded-2xl p-6" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+          <div className="font-mono text-xs uppercase tracking-widest mb-3" style={{color:C.muted}}>Current plan</div>
+          <div className="font-serif text-2xl font-semibold mb-1">{PLANS.find(p=>p.id===user.plan)?.name}</div>
+          <div className="text-xs mb-5" style={{color:C.muted}}>${PLANS.find(p=>p.id===user.plan)?.price}/month</div>
+          {user.plan==="free" ? <Btn variant="primary" className="w-full" onClick={onUpgrade}><I name="crown" size={13}/> Upgrade plan</Btn> : <Btn variant="ghost" className="w-full" onClick={onUpgrade}>Manage plan</Btn>}
+        </div>
+        <div className="rounded-2xl p-6" style={{backgroundColor:"#fff",border:`1px solid ${C.border}`}}>
+          <div className="font-mono text-xs uppercase tracking-widest mb-3" style={{color:C.muted}}>Payout method</div>
+          <div className="font-serif text-2xl font-semibold mb-1">Stripe Connect</div>
+          <div className="text-xs mb-5" style={{color:C.muted}}>Not yet configured</div>
+          <Btn variant="ghost" className="w-full">Connect Stripe</Btn>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== UPGRADE MODAL ===== */
+const UpgradeModal = ({ user, onClose, onUpgrade }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto" style={{backgroundColor:"rgba(13,13,13,0.6)"}}>
+    <div className="relative w-full max-w-5xl float-up my-8">
+      <div className="rounded-2xl p-8 sm:p-10" style={{backgroundColor:C.paper,border:`1px solid ${C.border}`}}>
+        <div className="flex items-center justify-between mb-6">
+          <div className="font-mono text-xs uppercase tracking-widest" style={{color:C.emerald}}>// Pricing</div>
+          <button onClick={onClose} style={{color:C.muted}}><I name="x" size={18}/></button>
+        </div>
+        <h2 className="font-serif font-medium text-center mb-2 leading-tight" style={{fontSize:"clamp(32px, 4.5vw, 52px)",letterSpacing:"-0.02em"}}>Pick your <em className="italic">plan.</em></h2>
+        <p className="text-sm mb-10 text-center" style={{color:C.muted}}>No setup fees. Cancel anytime.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {PLANS.map(p => {
+            const current = p.id===user.plan;
+            const popular = p.id==="pro";
+            return (
+              <div key={p.id} className="relative rounded-2xl p-6" style={{backgroundColor:popular?C.ink:"#fff",border:`1px solid ${popular?C.ink:C.border}`,color:popular?C.cream:C.ink}}>
+                {popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-widest" style={{backgroundColor:C.emerald,color:"#fff"}}>Most popular</div>}
+                <div className="font-mono text-[10px] uppercase tracking-widest mb-3" style={{color:popular?"rgba(255,255,255,0.6)":C.muted}}>{p.name}</div>
+                <div className="mb-1"><span className="font-serif text-4xl font-semibold">${p.price}</span><span className="text-xs ml-1" style={{color:popular?"rgba(255,255,255,0.6)":C.muted}}>/mo</span></div>
+                <div className="text-xs mb-5" style={{color:popular?"rgba(255,255,255,0.6)":C.muted}}>{p.seats}</div>
+                <ul className="space-y-2 mb-6">
+                  {p.features.map(f => (
+                    <li key={f} className="flex items-start gap-2 text-xs">
+                      <I name="check" size={12} style={{color:C.emerald,flexShrink:0,marginTop:2}}/>
+                      <span style={{color:popular?"rgba(255,255,255,0.85)":C.inkSoft}}>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                {current ? (
+                  <div className="text-center text-xs py-2.5 rounded-full" style={{border:`1px solid ${popular?"rgba(255,255,255,0.2)":C.border}`,color:popular?"rgba(255,255,255,0.6)":C.muted}}>Current plan</div>
+                ) : (
+                  <Btn variant={popular?"emerald":"ghost"} className="w-full" size="sm" onClick={()=>onUpgrade(p.id)}>{p.price===0?"Downgrade":"Choose plan"}</Btn>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ===== MAIN APP ===== */
+const App = () => {
+  const [user,setUser] = useState(null);
+  const [authOpen,setAuthOpen] = useState(false);
+  const [view,setView] = useState("marketplace");
+  const [listings,setListings] = useState([]);
+  const [reviews,setReviews] = useState([]);
+  const [selected,setSelected] = useState(null);
+  const [showUpgrade,setShowUpgrade] = useState(false);
+  const [loading,setLoading] = useState(true);
+  const [browseOnly,setBrowseOnly] = useState(false);
+  const [toast,setToast] = useState(null);
+
+  useEffect(() => {
+    let allListings = sg("phub_listings");
+    if (!allListings || allListings.length===0) {
+      allListings = SEED_LISTINGS.map((l,i) => ({ ...l, id:`seed_${i}`, sellerEmail:`${l.seller}@patronos.hub`, createdAt:Date.now()-i*86400000 }));
+      ss("phub_listings", allListings);
+    }
+    setListings(allListings);
+
+    let allReviews = sg("phub_reviews");
+    if (!allReviews || allReviews.length===0) {
+      allReviews = SEED_REVIEWS.map((r,i) => ({ ...r, id:`r_${i}`, ts: Date.now() - r.daysAgo*86400000 }));
+      ss("phub_reviews", allReviews);
+    }
+    setReviews(allReviews);
+
+    const sess = sg("phub_session");
+    if (sess?.email) {
+      const u = sg(`phub_user_${sess.email}`);
+      if (u) setUser(u);
+    }
+    setLoading(false);
+  }, []);
+
+  const showToast = (msg) => setToast({ msg, id: Date.now() });
+
+  const handleAuth = (u) => { setUser(u); setAuthOpen(false); setBrowseOnly(false); setView("marketplace"); };
+  const handleLogout = () => { sd("phub_session"); setUser(null); setBrowseOnly(false); };
+
+  const persistUser = (u) => { setUser(u); ss(`phub_user_${u.email}`, u); };
+
+  const handleCreate = async (data) => {
+    const newL = { ...data, id:`l_${Date.now()}`, rating:5.0, sales:0, featured:false, verified:user.verified, trending:false, createdAt:Date.now() };
+    const updated = [newL, ...listings];
+    setListings(updated); ss("phub_listings", updated);
+    persistUser({ ...user, listings:[...(user.listings||[]), newL.id] });
+    showToast(`"${newL.title}" is now live!`);
+  };
+
+  const handlePurchase = async (listing, coupon) => {
+    const finalPrice = coupon ? listing.price*(1-coupon.discount) : listing.price;
+    const purchase = { listingId:listing.id, purchasedAt:Date.now(), price:finalPrice, coupon:coupon?.code };
+    persistUser({ ...user, purchases:[...(user.purchases||[]), purchase] });
+    const updL = listings.map(l => l.id===listing.id ? { ...l, sales:l.sales+1 } : l);
+    setListings(updL); ss("phub_listings", updL);
+    const seller = sg(`phub_user_${listing.sellerEmail}`);
+    if (seller) {
+      seller.balance = (seller.balance||0) + finalPrice*(1-FEE_RATE);
+      ss(`phub_user_${listing.sellerEmail}`, seller);
+    }
+    showToast(`Purchased "${listing.title}"!`);
+  };
+
+  const handleAddReview = async (listingId, rating, comment) => {
+    const newR = { id:`r_${Date.now()}`, listingId, reviewer:user.name.toLowerCase().replace(/\s+/g,""), rating, comment, ts:Date.now() };
+    const updated = [...reviews, newR];
+    setReviews(updated); ss("phub_reviews", updated);
+    showToast("Thanks for your review!");
+  };
+
+  const handlePromote = async (listing) => {
+    if (!confirm(`Promote "${listing.title}" for $50? (demo)`)) return;
+    const updated = listings.map(l => l.id===listing.id ? { ...l, featured:true } : l);
+    setListings(updated); ss("phub_listings", updated);
+    showToast("Project promoted!");
+  };
+
+  const handleUpgrade = async (planId) => {
+    persistUser({ ...user, plan:planId, verified: planId==="startup"||planId==="ent" ? true : user.verified });
+    setShowUpgrade(false);
+    showToast(`Upgraded to ${PLANS.find(p=>p.id===planId).name}!`);
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center paper-grain"><div className="flex items-center gap-3 pulse-soft"><LogoMark size={24}/><span className="font-mono text-xs tracking-widest uppercase" style={{color:C.muted}}>Loading the hub</span></div></div>;
+
+  if (!user && browseOnly) {
+    return (
+      <>
+        <nav className="sticky top-0 z-30 backdrop-blur-md" style={{backgroundColor:"rgba(245,240,230,0.85)",borderBottom:`1px solid ${C.border}`}}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <Logo size="md"/><Btn onClick={()=>setAuthOpen(true)}>Sign in to back</Btn>
+          </div>
+        </nav>
+        <div className="paper-grain min-h-screen">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+            <Marketplace listings={listings} onSelect={setSelected} currentUser={{name:"Guest",email:""}} allReviews={reviews}/>
+          </div>
+        </div>
+        {selected && (
+          <div className="fixed inset-0 z-40 paper-grain overflow-y-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+              <ProjectDetail listing={selected} onBack={()=>setSelected(null)} currentUser={{name:"Guest",email:"",purchases:[]}} onPurchase={()=>{setSelected(null);setAuthOpen(true);}} reviews={reviews.filter(r=>r.listingId===selected.id)} onAddReview={()=>setAuthOpen(true)}/>
+            </div>
+          </div>
+        )}
+        {authOpen && <AuthModal onClose={()=>setAuthOpen(false)} onAuth={handleAuth}/>}
+      </>
+    );
+  }
+
+  if (!user) return <><Landing onAuth={()=>setAuthOpen(true)} onBrowse={()=>setBrowseOnly(true)}/>{authOpen && <AuthModal onClose={()=>setAuthOpen(false)} onAuth={handleAuth}/>}</>;
+
+  const myListings = listings.filter(l => l.sellerEmail === user.email);
+  const listingReviews = selected ? reviews.filter(r => r.listingId === selected.id) : [];
+
+  return (
+    <>
+      <Shell user={user} view={view} setView={(v)=>{setView(v);setSelected(null);}} onLogout={handleLogout} onUpgrade={()=>setShowUpgrade(true)}>
+        {selected ? (
+          <ProjectDetail listing={selected} onBack={()=>setSelected(null)} currentUser={user} onPurchase={handlePurchase} reviews={listingReviews} onAddReview={handleAddReview}/>
+        ) : (
+          <>
+            {view==="marketplace" && <Marketplace listings={listings} onSelect={setSelected} currentUser={user} allReviews={reviews}/>}
+            {view==="selling"     && <Studio user={user} listings={myListings} onCreate={handleCreate} onPromote={handlePromote} onUpgrade={()=>setShowUpgrade(true)}/>}
+            {view==="purchases"   && <Library user={user} allListings={listings} onSelect={setSelected}/>}
+            {view==="wallet"      && <Wallet user={user} listings={listings} onUpgrade={()=>setShowUpgrade(true)}/>}
+          </>
+        )}
+      </Shell>
+      {showUpgrade && <UpgradeModal user={user} onClose={()=>setShowUpgrade(false)} onUpgrade={handleUpgrade}/>}
+      {toast && <Toast key={toast.id} message={toast.msg} onClose={()=>setToast(null)}/>}
+    </>
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>
